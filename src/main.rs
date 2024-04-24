@@ -5,10 +5,11 @@ use sqlx::{Pool, Postgres};
 mod database {
     pub mod postgres_connection;
 }
+mod service;
 
 #[derive(Clone)]
 pub struct AppState {
-    pg_data: Pool<Postgres>,
+    pg_client: Pool<Postgres>,
 }
 
 #[get("/")]
@@ -20,12 +21,14 @@ async fn index() -> impl Responder {
 async fn main() -> std::io::Result<()> {
     dotenv().ok();
     let _pool = database::postgres_connection::start_connection().await;
+
     println!("Server is running on port: 8080!");
     HttpServer::new(move || {
         App::new()
             .app_data(web::Data::new(AppState {
-                pg_data: _pool.clone(),
+                pg_client: _pool.clone(),
             }))
             .service(index)
+            .configure(service::user::services::user_routes)
     }).bind(("127.0.0.1", 8080))?.run().await
 }
